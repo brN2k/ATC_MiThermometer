@@ -1,4 +1,7 @@
-@Path=E:\Telink\SDK;E:\Telink\SDK\jre\bin;E:\Telink\SDK\opt\tc32\tools;E:\Telink\SDK\opt\tc32\bin;E:\Telink\SDK\usr\bin;E:\Telink\SDK\bin;%PATH%
+@pushd "%~dp0" || exit /b 1
+@set "TLSDK=C:\TelinkSDK"
+@set "TC32_PATH=/c/TelinkSDK/opt/tc32/bin/"
+@set "PATH=%TLSDK%\jre\bin;%TLSDK%\bin;%TLSDK%\opt\tc32\tools;%TLSDK%\opt\tc32\bin;%TLSDK%\usr\bin;%PATH%"
 @set SWVER=_v59
 @del /Q "ATC%SWVER%.bin"
 make -s -j PROJECT_NAME=ATC%SWVER% POJECT_DEF="-DDEVICE_TYPE=DEVICE_LYWSD03MMC"
@@ -132,8 +135,12 @@ make -s -j PROJECT_NAME=ZB2TH01SHTC3%SWVER% POJECT_DEF="-DDEVICE_TYPE=DEVICE_ZBE
 cd .\zigbee_ota\zigpy_ota
 call update.cmd %SWVER%
 cd ..\..
-@exit
+@set "BUILD_EXIT=0"
+@goto :done
 :error
 echo "Error!"
+:done
+@popd
+@exit /b %BUILD_EXIT%
 
          
