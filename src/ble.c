@@ -124,7 +124,11 @@ void ble_connect_callback(u8 e, u8 *p, int n) {
 	wrk.ble_connected = BIT(CONNECTED_FLG_ENABLE);
 	wrk.tim_measure = clock_time();
 #if USE_SYNC_SCAN
+#if USE_SYNC_SCAN == 3
+	scan_v3_abort();
+#else
 	scan_stop(); // stop scan
+#endif
 #endif
 	if(cfg.connect_latency > DEF_CONNECT_LATENCY
 #if USE_AVERAGE_BATTERY
@@ -194,7 +198,13 @@ int app_advertise_prepare_handler(rf_packet_adv_t * p)	{
 #endif
 	{
 #if USE_SYNC_SCAN
+#if USE_SYNC_SCAN == 3
+		/* Keep request/receive transaction alive across advertising events. */
+		if(!scan.v3_inflight)
+			scan.enabled = 0;
+#else
 		scan.enabled = 0; // stop scan
+#endif
 #endif
 #if USE_SENSOR_SCD41
 		wrk.start_measure = 1;
@@ -322,6 +332,17 @@ int ext_adv_tx_level(void) {
  * blt_event_callback_t(): */
 void ev_adv_timeout(u8 e, u8 *p, int n) {
 	(void) e; (void) p; (void) n;
+#if USE_SYNC_SCAN == 3
+	if(wrk.ble_connected)
+		return;
+	if(scan.v3_inflight) {
+		bls_ll_setAdvEnable(BLC_ADV_DISABLE);
+		bls_ll_setAdvDuration(0, 0);
+		adv_buf.data_size = 0;
+		adv_buf.update_count = 0;
+		load_adv_data();
+	}
+#endif
 #if (DEV_SERVICES & SERVICE_LE_LR)
 	if (adv_buf.ext_adv_init != EXT_ADV_Off) { // extension advertise
 		if(wrk.ble_connected)
@@ -376,6 +397,10 @@ void ev_adv_timeout(u8 e, u8 *p, int n) {
 		bls_ll_setScanRspData((u8 *) ble_name, ble_name[0]+1);
 		bls_ll_setAdvEnable(BLC_ADV_ENABLE);  //ADV enable
 	}
+#if USE_SYNC_SCAN == 3
+	if(scan.v3_inflight && scan.enabled && !scan.start_tik)
+		scan_wakeup();
+#endif
 }
 
 #if (DEV_SERVICES & SERVICE_KEY) || (DEV_SERVICES & SERVICE_RDS)
@@ -385,6 +410,10 @@ void ev_adv_timeout(u8 e, u8 *p, int n) {
  * @return none
  */
 void set_adv_con_time(int restore) {
+#if USE_SYNC_SCAN == 3
+	/* A key-driven advertising change supersedes the sync transaction. */
+	scan_v3_abort();
+#endif
 	if(restore) {
 		test_config(); // restore adv_interval
 		ext_key.rest_adv_int_tad = 0; // stop timer event restore adv.intervals

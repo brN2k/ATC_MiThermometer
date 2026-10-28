@@ -39,6 +39,12 @@ static const u16 my_gattServiceUUID = SERVICE_UUID_GENERIC_ATTRIBUTE; // 1801
 
 #if USE_DEVICE_INFO_CHR_UUID
 
+#if defined(FIRMWARE_BUILD_BN) && FIRMWARE_BUILD_BN
+#define SOFTWARE_REV_SUFFIX , '_', 'b', 'n'
+#else
+#define SOFTWARE_REV_SUFFIX
+#endif
+
 //#define CHARACTERISTIC_UUID_SYSTEM_ID			0x2A23 // System ID
 #define CHARACTERISTIC_UUID_MODEL_NUMBER		0x2A24 // Model Number String: LYWSD03MMC
 #define CHARACTERISTIC_UUID_SERIAL_NUMBER		0x2A25 // Serial Number String: F1.0-CFMK-LB-ZCXTJ--
@@ -94,7 +100,7 @@ RAM u8 my_SerialStr[20]; // "556202-C86013-123456"
 static const u8 my_ModelStr[] = {"MJWSD05MMC"};
 RAM u8 my_HardStr[4];// = {"V2.3"}
 RAM u8 my_SerialStr[20]; // = {"F2.0-CFMK-LB-TMDZ---"}
-static const u8 my_SoftStr[] = {'V','0'+(VERSION>>4),'.','0'+(VERSION&0x0f)}; // "0026"
+static const u8 my_SoftStr[] = {'V','0'+(VERSION>>4),'.','0'+(VERSION&0x0f) SOFTWARE_REV_SUFFIX}; // "V5.9_bn" for bn builds
 static const u8 my_ManStr[] = {"miaomiaoce.com"};
 
 #elif DEVICE_TYPE == DEVICE_MHO_C401
@@ -117,7 +123,7 @@ static const u8 my_ManStr[] = {"miaomiaoce.com"};
 static const u8 my_ModelStr[] = {"LYWSD03MMC"};
 RAM u8 my_HardStr[4];// = {"B1.4"};
 RAM u8 my_SerialStr[20]; // = {"F1.0-CFMK-LB-ZCXTJ--"}; // B1.5 "F2.0-CFMK-LB-JHBD---", B1.9 "F1.0-CFMK-LB-FLD----"
-static const u8 my_SoftStr[] = {'V','0'+(VERSION>>4),'.','0'+(VERSION&0x0f)}; // "0109"
+static const u8 my_SoftStr[] = {'V','0'+(VERSION>>4),'.','0'+(VERSION&0x0f) SOFTWARE_REV_SUFFIX}; // "V5.9_bn" for bn builds
 static const u8 my_ManStr[] = {"miaomiaoce.com"};
 
 #elif DEVICE_TYPE == DEVICE_CGG1

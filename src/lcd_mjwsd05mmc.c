@@ -7,6 +7,14 @@
 #include "i2c.h"
 #if (DEV_SERVICES & SERVICE_HARD_CLOCK)
 #include "rtc.h"
+#if USE_SYNC_SCAN == 3
+#include "eu_timezone.h"
+/* Display-only calendar, rebuilt before each render. Hardware stays UTC. */
+static rtc_time_t sync_v3_display_rtc;
+#define LCD_RTC sync_v3_display_rtc
+#else
+#define LCD_RTC rtc
+#endif
 #endif
 #include "lcd.h"
 #include "ble.h"
@@ -655,7 +663,7 @@ static void show_s4_number_x10(s32 number, u8 atr){
 
 static void show_clock_s3(void) {
 #if (DEV_SERVICES & SERVICE_HARD_CLOCK)
-	u8 hrs = rtc.hours;
+	u8 hrs = LCD_RTC.hours;
 	if(cfg.flg.time_am_pm) {
 		if(hrs > 12)
 			hrs -= 12;
@@ -666,8 +674,8 @@ static void show_clock_s3(void) {
 	display_buff[10] = BIT(0); // ":"
 	lcd_set_digit(display_buff, hrs / 10 % 10, sb_s3[0]);
 	lcd_set_digit(display_buff, hrs % 10, sb_s3[1]);
-	lcd_set_digit(display_buff, rtc.minutes / 10 % 10, sb_s3[2]);
-	lcd_set_digit(display_buff, rtc.minutes % 10, sb_s3[3]);
+	lcd_set_digit(display_buff, LCD_RTC.minutes / 10 % 10, sb_s3[2]);
+	lcd_set_digit(display_buff, LCD_RTC.minutes % 10, sb_s3[3]);
 #else
 	u32 tmp = wrk.utc_time_sec / 60;
 	u32 min = tmp % 60;
@@ -687,7 +695,7 @@ static void show_clock_s1(void) {
 #if (DEV_SERVICES & SERVICE_HARD_CLOCK)
 	clear_s1();
 	display_buff[1] = BIT(0); // ":"
-	u8 hrs = rtc.hours;
+	u8 hrs = LCD_RTC.hours;
 	if(cfg.flg.time_am_pm) {
 		if(hrs > 12)
 			hrs -= 12;
@@ -696,8 +704,8 @@ static void show_clock_s1(void) {
 	}
 	lcd_set_digit(display_buff, hrs / 10 % 10, sb_s1[0]);
 	lcd_set_digit(display_buff, hrs % 10, sb_s1[1]);
-	lcd_set_digit(display_buff, rtc.minutes / 10 % 10, sb_s1[2]);
-	lcd_set_digit(display_buff, rtc.minutes % 10, sb_s1[3]);
+	lcd_set_digit(display_buff, LCD_RTC.minutes / 10 % 10, sb_s1[2]);
+	lcd_set_digit(display_buff, LCD_RTC.minutes % 10, sb_s1[3]);
 #else
 	u32 tmp = wrk.utc_time_sec / 60;
 	u32 min = tmp % 60;
@@ -719,18 +727,18 @@ static void show_data_s2(u8 flg_wd) { //, u8 date_ddmm) {
 	display_buff[5] = BIT(0); // "/"
 	display_buff[4] &= BIT(4); // s1: "1"
 	if(!flg_wd) {
-		display_buff[4] |= sb_dnd[rtc.weekday];
+		display_buff[4] |= sb_dnd[LCD_RTC.weekday];
 	}
 
-	if (rtc.month >= 10) {
+	if (LCD_RTC.month >= 10) {
 		mh = 1;
-		ml = rtc.month - 10;
+		ml = LCD_RTC.month - 10;
 	} else {
 		mh = 0;
-		ml = rtc.month;
+		ml = LCD_RTC.month;
 	}
 	dh = 0;
-	dl = rtc.days;
+	dl = LCD_RTC.days;
 	while(dl >= 10) {
 		dl -= 10;
 		dh++;
@@ -800,6 +808,10 @@ void lcd(void) {
 	if(cfg.flg2.screen_off) {
 		return;
 	}
+#if USE_SYNC_SCAN == 3
+	/* Keep the external RTC in UTC. Only the displayed calendar is local. */
+	utime_to_rtc(eu_tz_local_epoch(wrk.utc_time_sec), &sync_v3_display_rtc);
+#endif
 	u8 screen_type = cfg.flg2.screen_type;
 	if(lcd_flg.chow_ext_ut >= wrk.utc_time_sec)
 		screen_type = SCR_TYPE_EXT;
@@ -875,7 +887,7 @@ void lcd(void) {
 	display_buff[3] &= ~(BIT(0)); // PM
 	display_buff[2] &= ~(BIT(0)); // AM
 	if(cfg.flg.time_am_pm) {
-		if(rtc.hours >= 12) {
+		if(LCD_RTC.hours >= 12) {
 			display_buff[2] |= BIT(0);
 		} else {
 			display_buff[3] |= BIT(0);

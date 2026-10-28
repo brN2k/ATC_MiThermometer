@@ -4,6 +4,9 @@
 #include "drivers.h"
 #include "drivers/8258/gpio_8258.h"
 #include "app.h"
+#if USE_SYNC_SCAN == 3
+#include "eu_timezone.h"
+#endif
 #include "i2c.h"
 #include "lcd.h"
 /*
@@ -525,7 +528,11 @@ void show_reboot_screen(void) {
 #if	USE_DISPLAY_CLOCK
 _attribute_ram_code_
 void show_clock(void) {
+#if USE_SYNC_SCAN == 3
+	u32 tmp = eu_tz_local_epoch(wrk.utc_time_sec) / 60;
+#else
 	u32 tmp = wrk.utc_time_sec / 60;
+#endif
 	u32 min = tmp % 60;
 	u32 hrs = tmp / 60 % 24;
 	display_buff[0] = display_numbers[min % 10];

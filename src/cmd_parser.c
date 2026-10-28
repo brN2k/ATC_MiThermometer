@@ -31,7 +31,7 @@
 #if (USE_SENSOR_HX71X)
 #include "hx71x.h"
 #endif
-#if (DEV_SERVICES & SERVICE_SCANTIM)
+#if USE_SYNC_SCAN
 #include "scanning.h"
 #endif
 #if USE_SDM_OUT
@@ -575,6 +575,11 @@ void cmd_parser(void * p) {
 			if (len) {
 				if (len > sizeof(wrk.utc_time_sec)) len = sizeof(wrk.utc_time_sec);
 				memcpy(&wrk.utc_time_sec, &req->dat[1], len);
+#if USE_SYNC_SCAN == 3
+				/* Mode 3 expects actual UTC here, never display-local time. */
+				wrk.utc_time_sec_tick = clock_time();
+				scan_v3_clock_changed();
+#endif
 #if (DEV_SERVICES & SERVICE_TIME_ADJUST)
 				utc_set_time_sec = wrk.utc_time_sec;
 #endif
@@ -595,6 +600,9 @@ void cmd_parser(void * p) {
 			if (len > 1) {
 				s16 delta = req->dat[1] | (req->dat[2] << 8);
 				wrk.utc_time_tick_step = CLOCK_16M_SYS_TIMER_CLK_1S + delta;
+#if USE_SYNC_SCAN == 3
+				scan_v3_clock_changed();
+#endif
 				flash_write_cfg(&wrk.utc_time_tick_step, EEP_ID_TIM, sizeof(wrk.utc_time_tick_step));
 			}
 			memcpy(&send_buf[1], &wrk.utc_time_tick_step, sizeof(wrk.utc_time_tick_step));
@@ -830,10 +838,14 @@ void cmd_parser(void * p) {
 #endif
 			olen = 5 + 1;
 #endif
-#if (DEV_SERVICES & SERVICE_SCANTIM)
+#if USE_SYNC_SCAN
 		} else if (cmd == CMD_ID_SCAN_CFG) { // Get/Set Scan Config parameters
 			if (len) {
+#if USE_SYNC_SCAN == 3
+				scan_v3_abort();
+#else
 				scan_stop(); // stop scan
+#endif
 				if (len > sizeof(scan.cfg))
 					len = sizeof(scan.cfg);
 				memcpy(&scan.cfg, &req->dat[1], len);

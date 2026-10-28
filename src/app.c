@@ -998,8 +998,13 @@ void user_init_deepRetn(void) {//after sleep this will get executed
 	blc_ll_recoverDeepRetention();
 	bls_ota_registerStartCmdCb(app_enter_ota_mode);
 #if USE_SYNC_SCAN
+#if USE_SYNC_SCAN == 3
+	if(scan.v3_inflight && scan.enabled && !scan.start_tik && !blta.adv_duraton_en)
+		scan_wakeup();
+#else
 	if(scan.enabled)
 		scan_wakeup();
+#endif
 #endif
 }
 
@@ -1309,6 +1314,9 @@ void main_loop(void) {
 			}
 #endif // #if (DEV_SERVICES & SERVICE_SCREEN)
 #if USE_SYNC_SCAN
+#if USE_SYNC_SCAN == 3
+			scan_v3_poll();
+#else
 			if (scan.cfg.interval
 			&& wrk.utc_time_sec - scan.start_time > scan.cfg.interval
 			&& adv_buf.ext_adv_init == EXT_ADV_Off // not support extension advertise
@@ -1317,6 +1325,7 @@ void main_loop(void) {
 				scan.start_time = wrk.utc_time_sec;
 				scan_start();
 			}
+#endif
 #endif
 		}
 #if USE_SYNC_SCAN

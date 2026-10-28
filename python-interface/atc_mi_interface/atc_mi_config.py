@@ -38,6 +38,11 @@ CMD_ID_CFG_DEF = 0x56  # Set default device config
 CMD_ID_LCD_DUMP = 0x60  # Get/set lcd buf
 CMD_ID_REBOOT = 0x72  # Set Reboot on disconnect
 
+def current_device_timestamp(use_utc=False):
+    """UTC for sync-v3 firmware; preserve legacy local-clock mode otherwise."""
+    now = time.time()
+    return int(now) if use_utc else calendar.timegm(time.localtime(now))
+
 STRTIME_FORMAT = '%A, %d %B %Y %H:%M:%S'
 BC_TIMEOUT = 40.0
 SLEEP_TIMEOUT = 0.1
@@ -634,7 +639,7 @@ async def atc_mi_configuration(args: argparse.Namespace):
                     data_out.append(
                         {"setting_date": ["Setting date:", args.set_date]})
                     set_date = bytes([CMD_ID_UTC_TIME]) + Int32ul.build(
-                        calendar.timegm(time.localtime(time.time())))
+                        current_device_timestamp(use_utc=args.set_date == "utc"))
                     char_n[0] = CMD_ID_UTC_TIME + 0xEE00 # Set utc time
                     await client.write_gatt_char(
                         characteristic_uuid, set_date, response=True)
@@ -795,12 +800,20 @@ def main():
         action='append',
         help="Edit one or multiple values; "
             "no value to dump editable parameters")
-    parser.add_argument(
+    date_options = parser.add_mutually_exclusive_group()
+    date_options.add_argument(
         '-D',
         "--set_date",
         dest='set_date',
-        action='store_true',
-        help="Set current device date with the host time")
+        action='store_const',
+        const='local',
+        help="Set host local clock time (legacy firmware; not USE_SYNC_SCAN=3)")
+    date_options.add_argument(
+        "--set_date_utc", "--set-date-utc",
+        dest='set_date',
+        action='store_const',
+        const='utc',
+        help="Set actual UTC Unix time (USE_SYNC_SCAN=3 / bn firmware)")
     parser.add_argument(
         "-j",
         '--adjust',

@@ -23,6 +23,9 @@
 #include "bthome_beacon.h"
 #endif
 #include "rds_count.h"
+#if USE_SYNC_SCAN == 3
+#include "scanning.h"
+#endif
 #if (USE_SENSOR_HX71X)
 #include "hx71x.h"
 #endif
@@ -298,6 +301,11 @@ void rds_task(void) {
 		rds.report_tick = wrk.utc_time_sec;
 	}
 	if (rds.event != RDS_NONE) {
+#if USE_SYNC_SCAN == 3
+		/* Keep the event pending while the request/listen radio is in use. */
+		if(scan.v3_inflight)
+			return;
+#endif
 		if(wrk.ble_connected) {
 			if (rds.event == RDS_SWITCH) { // switch mode
 				if(blc_ll_getTxFifoNumber() < 9)
